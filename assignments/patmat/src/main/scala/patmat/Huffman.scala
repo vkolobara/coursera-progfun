@@ -24,12 +24,12 @@ object Huffman {
 
   // Part 1: Basics
   def weight(tree: CodeTree): Int = tree match {
-    case Fork(left, right, _, _) => weight(left) + weight(right)
-    case Leaf(_, weight) => weight
+    case Fork(_, _, _, w) => w
+    case Leaf(_, w) => w
   }
 
   def chars(tree: CodeTree): List[Char] = tree match {
-    case Fork(left, right, _, _) => chars(left) ::: chars(right)
+    case Fork(_, _, chars, _) => chars
     case Leaf(char, _) => List(char)
 
   }
@@ -88,7 +88,7 @@ object Huffman {
    * head of the list should have the smallest weight), where the weight
    * of a leaf is the frequency of the character.
    */
-  def makeOrderedLeafList(freqs: List[(Char, Int)]): List[Leaf] = freqs.sortWith(_._2 > _._2).map(el => new Leaf(el._1, el._2))
+  def makeOrderedLeafList(freqs: List[(Char, Int)]): List[Leaf] = freqs.sortWith(_._2 < _._2).map(el => new Leaf(el._1, el._2))
 
   /**
    * Checks whether the list `trees` contains only one single code tree.
@@ -110,7 +110,10 @@ object Huffman {
    * If `trees` is a list of less than two elements, that list should be returned
    * unchanged.
    */
-  def combine(trees: List[CodeTree]): List[CodeTree] = ???
+  def combine(trees: List[CodeTree]): List[CodeTree] = trees match {
+    case x1 :: x2 :: xs => (makeCodeTree(x1, x2) :: xs).sortWith(weight(_) < weight(_))
+    case _ => trees
+  }
 
   /**
    * This function will be called in the following way:
@@ -129,7 +132,9 @@ object Huffman {
    *    the example invocation. Also define the return type of the `until` function.
    *  - try to find sensible parameter names for `xxx`, `yyy` and `zzz`.
    */
-  def until(xxx: ???, yyy: ???)(zzz: ???): ??? = ???
+  def until(termination: List[CodeTree] => Boolean, transform: List[CodeTree] => List[CodeTree])(trees: List[CodeTree]): List[CodeTree] = {
+    if (termination(trees)) trees else until(termination, transform)(transform(trees))
+  }
 
   /**
    * This function creates a code tree which is optimal to encode the text `chars`.
@@ -137,7 +142,7 @@ object Huffman {
    * The parameter `chars` is an arbitrary text. This function extracts the character
    * frequencies from that text and creates a code tree based on them.
    */
-  def createCodeTree(chars: List[Char]): CodeTree = ???
+  def createCodeTree(chars: List[Char]): CodeTree = until(singleton, combine)(makeOrderedLeafList(times(chars))).head
 
   // Part 3: Decoding
 
@@ -147,7 +152,15 @@ object Huffman {
    * This function decodes the bit sequence `bits` using the code tree `tree` and returns
    * the resulting list of characters.
    */
-  def decode(tree: CodeTree, bits: List[Bit]): List[Char] = ???
+  def decode(tree: CodeTree, bits: List[Bit]): List[Char] = {
+    decodeSeq(tree: CodeTree, bits.tail)
+    def decodeSeq(subTree: CodeTree, bits: List[Bit]): Char = tree match {
+      case Leaf(char, _) => char :: decode(tree, bits.tail)
+      case Fork(left, right, _, _) => if (bits.head == 0) decodeSeq(left, bits.tail) else decodeSeq(right, bits.tail)
+  }
+    
+  }
+  
 
   /**
    * A Huffman coding tree for the French language.
